@@ -1,9 +1,16 @@
 var http = require('http');
 var fs = require("fs"); 
-var gm = require("./gm");
+var helper = require("./helper");
+var gm = require('gm');
 var myGlobal = require("./global");
 
 http.createServer(function (request, response) {
+      function callback(path) {  
+            var content = fs.readFileSync(path, "binary");   //格式必须为 binary 否则会出错
+            response.write(content,"binary"); //格式必须为 binary，否则会出错
+            response.end('');
+      }
+
       request.setEncoding('utf-8');
 
       // 发送 HTTP 头部 
@@ -31,32 +38,23 @@ http.createServer(function (request, response) {
         obj.quality = 100;
       }
 
-      console.log(obj.width);
-      console.log(obj.height);
-      console.log(obj.quality);
-      console.log(obj.url);
+      var imagePath = './image/';
 
-      var content = "";
+      var newUrl = obj.url + '?width=' + obj.width + '&height=' + obj.height + '&quality=' + obj.quality;
+      //缓存
+      if(myGlobal[newUrl] != undefined) {
+        console.log('裁剪后的图片有，直接使用');
 
-      gm.getImage(response, obj.width, obj.height, obj.quality, obj.url, function(path) {
-            console.log('1234');
-            console.log(path);
+        callback(imagePath + myGlobal[newUrl]);
 
-            console.log(myGlobal[obj.url]);
+      } else if(myGlobal[obj.url] != undefined ) { 
+        console.log('裁剪后的图片没有，原始图片有，则裁剪后再使用');        
 
-            content = fs.readFileSync(path, "binary");   //格式必须为 binary 否则会出错
-
-            response.write(content,"binary"); //格式必须为 binary，否则会出错
-            response.end('');
-      });
-
-      // var path = dict[obj.url];
-      // if(!path) {
-      //   content = fs.readFileSync(path, "binary")   
-      // } else {
-      //   content = gm.getImage(obj.width, obj.height, obj.quality, obj.url);
-      //   dict[obj.url] = 
-      // }   
+        helper.corpImage(obj.width, obj.height, obj.quality, obj.url, callback);
+      } else { 
+        console.log('裁剪后的图片没有，原始图片也没有，则下载+裁剪+使用');
+        helper.getImage(obj.width, obj.height, obj.quality, obj.url, callback);
+      }
 
 }).listen(9999);
 

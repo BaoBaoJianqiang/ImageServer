@@ -2,8 +2,31 @@ var fs = require('fs')
 var http = require('http');
 var gm = require('gm');
 var myGlobal = require("./global");
+var fnv = require('fnv-plus');
 
-function getImage(response, width, height, quality, url, callback) {  
+function corpImage(width, height, quality, url, callback) {  
+        //hash，生成文件名
+        var newUrl = url + '?width=' + width + '&height=' + height + '&quality=' + quality;
+        var newFileName = fnv.hash(newUrl, 32).str() + '.jpg';
+        var imagePath = './image/';
+
+        gm(imagePath + myGlobal[url])
+           .resize(width, height, '!')
+           .setFormat('JPEG')
+           .quality(quality) 
+           .write(imagePath + newFileName, function (err) {
+               if (!err) {
+                  //裁剪后图片的缓存
+                  myGlobal[newUrl] = newFileName;
+
+                  callback(imagePath + newFileName);
+                                 　
+               } else 
+                  console.log(err);
+            });
+}
+
+function getImage(width, height, quality, url, callback) {  
 
    http.get(url,function(res){
 　　　　  var chunks = []; //用于保存网络请求不断加载传输的缓冲数据
@@ -40,37 +63,19 @@ function getImage(response, width, height, quality, url, callback) {
         
                 // 生成图片(把base64位图片编码写入到图片文件)
                 var reg = /.*\/(.*)/;
-                var imageName = url.replace(reg,"$1");
-                
-                console.log(imageName);
+                var imageName = url.replace(reg,"$1");                
 
                 //hash，生成文件名
-                var newUrl = url + '?width=' + width + '&height=' + height + '&quality=' + quality;
-                console.log(url);
-                console.log(newUrl);
-                var fnv = require('fnv-plus');
-                var oriFileName = fnv.hash(url, 32).str() + '.jpg';
-                var newFileName = fnv.hash(newUrl, 32).str() + '.jpg';
-                console.log(oriFileName);
-                console.log(newFileName);
+                var oriFileName = fnv.hash(url, 32).str() + '.jpg';                
+                var imagePath = './image/';
 
-                fs.writeFile(oriFileName, decodeImg, function(err) {
+                fs.writeFile(imagePath + oriFileName, decodeImg, function(err) {
                     if(!err) {
+                      //原始图片的缓存
+                      myGlobal[url] = oriFileName;
+
                       // 使用gm存在本地
-                      gm(oriFileName)
-                        .resize(width, height)
-                        .noProfile()
-                        .write(newFileName, function (err) {
-                          if (!err) {
-                            console.log('done123');
-
-                            myGlobal[url] = 'path';
-
-                            callback(newFileName);                　
-                          }
-                          else 
-                            console.log(err);
-                        });
+                      corpImage(width, height, quality, url, callback);
                     } 
                 });　
 　　　});
@@ -78,3 +83,4 @@ function getImage(response, width, height, quality, url, callback) {
 }
 
 exports.getImage = getImage;
+exports.corpImage = corpImage;
