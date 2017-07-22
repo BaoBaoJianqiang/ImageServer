@@ -1,5 +1,6 @@
 var fs = require('fs')
 var http = require('http');
+var https = require('https');
 var gm = require('gm');
 var myGlobal = require("./global");
 var fnv = require('fnv-plus');
@@ -26,13 +27,15 @@ function corpImage(width, height, quality, url, callback) {
             });
 }
 
-function getImage(width, height, quality, url, callback) {  
-
-   http.get(url,function(res){
+function getImage(width, height, quality, url, callback) { 
+   function downloadImageCallback(res) {
 　　　　  var chunks = []; //用于保存网络请求不断加载传输的缓冲数据
 　　　　  var size = 0;　　 //保存缓冲数据的总长度
 
+         res.writeHead(200, {'Content-Type': 'image/apng'});      
+
 　　　　  res.on('data',function(chunk){
+
 　　　　　　　　　　　chunks.push(chunk);　 //在进行网络请求时，会不断接收到数据(数据不是一次性获取到的)，
 
 　　　　　　　　　　　　　　　　//node会把接收到的数据片段逐段的保存在缓冲区（Buffer），
@@ -51,9 +54,8 @@ function getImage(width, height, quality, url, callback) {
 　　　　            size += chunk.length;　　//累加缓冲数据的长度
 　　　　　　　});
 
-　　
+  　　　 res.on('end',function(err){
 
-　　　 res.on('end',function(err){
 　　　　　　　　  var data = Buffer.concat(chunks, size);　　//Buffer.concat将chunks数组中的缓冲数据拼接起来，返回一个新的Buffer对象赋值给data
                console.log(Buffer.isBuffer(data));　　　　//可通过Buffer.isBuffer()方法判断变量是否为一个Buffer对象
          　　　　var base64Img = data.toString('base64');　　//将Buffer对象转换为字符串并以base64编码格式显示
@@ -78,8 +80,17 @@ function getImage(width, height, quality, url, callback) {
                       corpImage(width, height, quality, url, callback);
                     } 
                 });　
-　　　});
-  });
+　　　　　　});
+   }
+
+   console.log(url.substring(0,5));
+
+   //区分http和https
+   if(url.substring(0,5).toLowerCase() == 'https') {
+     https.get(url, downloadImageCallback);
+   } else {
+     http.get(url, downloadImageCallback);
+   }
 }
 
 exports.getImage = getImage;
