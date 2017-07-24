@@ -4,7 +4,12 @@ var helper = require("./helper");
 var gm = require('gm');
 var myGlobal = require("./global");
 
-http.createServer(function (request, response) {
+var server = http.createServer(function (request, response) {
+     var pathname = require("url").parse(request.url).pathname; 
+        if(pathname == '/favicon.ico'){ 
+        return; 
+     }
+
       function callback(path) {  
             var content = fs.readFileSync(path, "binary");   //格式必须为 binary 否则会出错
             response.write(content,"binary"); //格式必须为 binary，否则会出错
@@ -20,11 +25,8 @@ http.createServer(function (request, response) {
       //image/png
       response.writeHead(200, {'Content-Type': 'image/jpeg'});      
 
-      console.log(request.url);
-      var params = require("url").parse(request.url).query;
-      if(params) {
-        params = params.toLowerCase();
-      }
+      console.log('request.url: ' + request.url);
+      var params = require("url").parse(request.url).query;      
 
       var obj = require("querystring").parse(params);
       if(obj.width == undefined) {
@@ -40,7 +42,13 @@ http.createServer(function (request, response) {
 
       var imagePath = './image/';
 
-      var newUrl = obj.url + '?width=' + obj.width + '&height=' + obj.height + '&quality=' + obj.quality;
+      console.log('obj.url: ' + obj.url);
+      var decodeURL = new Buffer(obj.url, 'base64').toString();
+      console.log('decodeURL: ' + decodeURL);
+
+      var newUrl = decodeURL + '?width=' + obj.width + '&height=' + obj.height + '&quality=' + obj.quality;
+      console.log('7');
+      console.log(newUrl);
       //缓存
       if(myGlobal[newUrl] != undefined) {
         console.log('裁剪后的图片有，直接使用');
@@ -50,12 +58,14 @@ http.createServer(function (request, response) {
       } else if(myGlobal[obj.url] != undefined ) { 
         console.log('裁剪后的图片没有，原始图片有，则裁剪后再使用');        
 
-        helper.corpImage(obj.width, obj.height, obj.quality, obj.url, callback);
+        helper.corpImage(obj.width, obj.height, obj.quality, decodeURL, callback);
       } else { 
         console.log('裁剪后的图片没有，原始图片也没有，则下载+裁剪+使用');
-        helper.getImage(obj.width, obj.height, obj.quality, obj.url, callback);
+        helper.getImage(obj.width, obj.height, obj.quality, decodeURL, callback);
       }
 
-}).listen(9999);
+});
+
+server.listen(9999);
 
 console.log('Server running at http://127.0.0.1:9999/');
